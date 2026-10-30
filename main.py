@@ -72,7 +72,7 @@ def show_rates_window(base: str, second: str, target: str, rate1: float, rate2: 
     tk.Button(result, text="Закрыть", command=result.destroy, width=12).pack(pady=10)
 
 
-def get_rate() -> None:
+def exchange() -> None:
     base = base_var.get()
     second = second_var.get()
     target = target_var.get()
@@ -140,6 +140,6 @@ target_combo.bind(
 )
 
 # --- Кнопка ---
-tk.Button(window, text="Получить курс обмена", command=get_rate).pack(pady=20)
+tk.Button(window, text="Получить курс обмена", command=exchange).pack(pady=20)
 
 window.mainloop()
