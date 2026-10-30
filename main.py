@@ -1,5 +1,8 @@
+import json
 import tkinter as tk
-from tkinter import ttk
+import urllib.error
+import urllib.request
+from tkinter import messagebox, ttk
 
 CURRENCIES = {
     "EUR": "Евро",
@@ -13,14 +16,81 @@ CURRENCIES = {
     "AUD": "Австралийский доллар",
 }
 
+API_URL = "https://open.er-api.com/v6/latest/{base}"
 
 def update_name(code_var: tk.StringVar, name_label: tk.Label) -> None:
     code = code_var.get()
     name_label.config(text=CURRENCIES.get(code, ""))
 
+def fetch_rate(base: str, target: str) -> float:
+    if base == target:
+        return 1.0
+
+    url = API_URL.format(base=base)
+    with urllib.request.urlopen(url, timeout=10) as response:
+        data = json.loads(response.read().decode())
+
+    if data.get("result") != "success":
+        raise ValueError(data.get("error-type", "неизвестная ошибка API"))
+
+    rates = data.get("rates", {})
+    if target not in rates:
+        raise KeyError(f"курс для {target} не найден")
+
+    return float(rates[target])
+
+
+def show_rates_window(base: str, second: str, target: str, rate1: float, rate2: float) -> None:
+    result = tk.Toplevel(window)
+    result.title("Курс обмена")
+    result.geometry("360x220")
+    result.resizable(False, False)
+    result.transient(window)
+    result.grab_set()
+
+    tk.Label(result, text="Результаты обмена", font=("", 12, "bold")).pack(pady=(20, 15))
+
+    tk.Label(
+        result,
+        text=f"1 {base} ({CURRENCIES[base]}) = {rate1:.4f} {target}",
+        font=("", 11),
+    ).pack(pady=5)
+
+    tk.Label(
+        result,
+        text=f"1 {second} ({CURRENCIES[second]}) = {rate2:.4f} {target}",
+        font=("", 11),
+    ).pack(pady=5)
+
+    tk.Label(
+        result,
+        text=f"Целевая валюта: {CURRENCIES[target]}",
+        font=("", 10),
+        fg="gray",
+    ).pack(pady=(15, 10))
+
+    tk.Button(result, text="Закрыть", command=result.destroy, width=12).pack(pady=10)
+
 
 def get_rate() -> None:
-    return 0
+    base = base_var.get()
+    second = second_var.get()
+    target = target_var.get()
+
+    try:
+        rate1 = fetch_rate(base, target)
+        rate2 = fetch_rate(second, target)
+    except urllib.error.URLError:
+        messagebox.showerror(
+            "Ошибка",
+            "Не удалось подключиться к сервису курсов валют.\nПроверьте интернет-соединение.",
+        )
+        return
+    except (KeyError, ValueError, json.JSONDecodeError) as error:
+        messagebox.showerror("Ошибка", f"Не удалось получить курс:\n{error}")
+        return
+
+    show_rates_window(base, second, target, rate1, rate2)
 
 
 window = tk.Tk()
